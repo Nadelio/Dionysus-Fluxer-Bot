@@ -33,8 +33,8 @@ conn.close();
 @bot.event
 async def on_ready():
     print("Dionysus is awake!");
-    print(f"Dionysus is logged in as {bot.user.username}");
-    print(f"Dionysus's user_id is {bot.user.id}");
+    print(f"Dionysus is logged in as {bot.user.username}"); # pyright: ignore[reportOptionalMemberAccess]
+    print(f"Dionysus's user_id is {bot.user.id}"); # pyright: ignore[reportOptionalMemberAccess]
 
 def add_points(user_id: int, points_to_add: int, game: str):
     conn = sqlite3.connect(DB_NAME);
