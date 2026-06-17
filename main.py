@@ -2,11 +2,20 @@ import fluxer
 import sqlite3
 import random as rand
 import time
+import threading
 
 rand.seed(time.time());
 
+user_cache = {};
+score_cache = {};
+daily_cache = {};
+
 bot = fluxer.Bot(command_prefix="!");
 DB_NAME = "user_data.db";
+
+conn = sqlite3.connect(DB_NAME);
+conn.execute("PRAGMA journal_mode=WAL;");
+conn.close();
 
 conn = sqlite3.connect(DB_NAME);
 cursor = conn.cursor();
@@ -43,20 +52,23 @@ def upsert_user(user):
     cursor = conn.cursor();
 
     now = int(time.time());
+    user_id = str(user.id);
 
     cursor.execute("""
     INSERT OR IGNORE INTO users (user_id, name, last_seen)
     VALUES (?, ?, ?)
-    """, (user.id, user.username, now));
+    """, (user_id, user.username, now));
 
     cursor.execute("""
     UPDATE users
     SET name = ?, last_seen = ?
     WHERE user_id = ?
-    """, (user.username, now, user.id));
+    """, (user.username, now, user_id));
 
     conn.commit();
     conn.close();
+
+    user_cache[user_id] = user.username;
 
 @bot.event
 async def on_ready():
@@ -64,7 +76,9 @@ async def on_ready():
     print(f"Dionysus is logged in as {bot.user.username}"); # pyright: ignore[reportOptionalMemberAccess]
     print(f"Dionysus's user_id is {bot.user.id}"); # pyright: ignore[reportOptionalMemberAccess]
 
-def add_points(user_id: int, points_to_add: int, game: str):
+def add_points(user_id, points_to_add: int, game: str):
+    user_id = str(user_id);
+
     conn = sqlite3.connect(DB_NAME);
     cursor = conn.cursor();
 
@@ -82,7 +96,12 @@ def add_points(user_id: int, points_to_add: int, game: str):
     conn.commit();
     conn.close();
 
-def remove_points(user_id: int, points_to_add: int, game: str):
+    score_cache.setdefault(user_id, {});
+    score_cache[user_id][game] = score_cache[user_id].get(game, 0) + points_to_add;
+
+def remove_points(user_id, points_to_add: int, game: str):
+    user_id = str(user_id);
+
     conn = sqlite3.connect(DB_NAME);
     cursor = conn.cursor();
 
@@ -100,30 +119,11 @@ def remove_points(user_id: int, points_to_add: int, game: str):
     conn.commit();
     conn.close();
 
+    score_cache.setdefault(user_id, {});
+    score_cache[user_id][game] = score_cache[user_id].get(game, 0) - points_to_add;
+
 def query_points(user_id: int, game: str) -> int:
-    conn = sqlite3.connect(DB_NAME);
-    cursor = conn.cursor();
-
-    cursor.execute("""
-    SELECT points
-    FROM scores
-    WHERE user_id = ? AND game = ?
-    """, (user_id, game));
-
-    result = cursor.fetchone();
-
-    if result is None:
-        cursor.execute("""
-        INSERT INTO scores (user_id, game, points)
-        VALUES (?, ?, 0)
-        """, (user_id, game));
-
-        conn.commit();
-        conn.close();
-        return 0;
-
-    conn.close();
-    return result[0];
+    return score_cache.get(str(user_id), {}).get(game, 0)
 
 @bot.command()
 async def wins(ctx, game: str):
@@ -350,20 +350,11 @@ DAILY_COOLDOWN = 86400
 
 @bot.command()
 async def daily(ctx):
-    upsert_user(ctx.author)
+    upsert_user(ctx.author);
     user_id = ctx.author.id;
     now = int(time.time());
 
-    conn = sqlite3.connect(DB_NAME);
-    cursor = conn.cursor();
-
-    cursor.execute("""
-    SELECT last_claim
-    FROM daily_claims
-    WHERE user_id = ?
-    """, (user_id,));
-
-    result = cursor.fetchone();
+    result = daily_cache.get(str(user_id));
 
     if result is None:
         cursor.execute("""
@@ -375,10 +366,10 @@ async def daily(ctx):
         conn.close();
 
         add_points(user_id, 10, "balance");
+        daily_cache[str(user_id)] = now
         await ctx.reply("You received $10!");
-
     else:
-        last_claim = result[0]
+        last_claim = result
         next_claim = last_claim + DAILY_COOLDOWN
 
         if now >= next_claim:
@@ -392,6 +383,7 @@ async def daily(ctx):
             conn.close();
 
             add_points(user_id, 10, "balance");
+            daily_cache[str(user_id)] = now
             await ctx.reply("You received $10!");
 
         else:
@@ -411,7 +403,36 @@ async def d(ctx):
     await daily(ctx);
 #--- DAILY ---
 
+#--- DATABASE SYNC ---
+def sync_database():
+    global user_cache, score_cache, daily_cache
+
+    while True:
+        conn = sqlite3.connect(DB_NAME);
+        cursor = conn.cursor();
+
+        cursor.execute("SELECT user_id, name FROM users");
+        user_cache = {row[0]: row[1] for row in cursor.fetchall()};
+
+        cursor.execute("SELECT user_id, game, points FROM scores");
+        score_cache.clear();
+        for user_id, game, points in cursor.fetchall():
+            score_cache.setdefault(user_id, {})[game] = points;
+
+        cursor.execute("SELECT user_id, last_claim FROM daily_claims");
+        daily_cache = {row[0]: row[1] for row in cursor.fetchall()};
+
+        conn.close();
+
+        time.sleep(2);
+
+def start_sync_thread():
+    t = threading.Thread(target=sync_database, daemon=True);
+    t.start();
+#--- DATABASE SYNC ---
+
 if __name__ == "__main__":
     with open("./app_token", "r") as token_file:
+        start_sync_thread();
         TOKEN = token_file.readline();
         bot.run(TOKEN);

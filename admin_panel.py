@@ -51,12 +51,25 @@ def list_games(cursor):
     print(games);
 
 def inspect(cursor):
-    cursor.execute("SELECT * FROM scores");
-    rows = cursor.fetchall();
+    tables = ["users", "scores", "daily_claims"];
 
-    print("\nRaw table:");
-    for row in rows:
-        print(row);
+    print("\n=== DATABASE INSPECT ===");
+
+    for table in tables:
+        try:
+            cursor.execute(f"SELECT * FROM {table}");
+            rows = cursor.fetchall();
+
+            print(f"\n[{table}]");
+            if not rows:
+                print("  (empty)");
+                continue;
+
+            for row in rows:
+                print(" ", row);
+
+        except sqlite3.OperationalError as e:
+            print(f"\n[{table}] ERROR: {e}");
 
 def leaderboard(cursor, game):
     cursor.execute("""
@@ -124,12 +137,33 @@ def profile(cursor, user_id):
 
     total = sum(r[1] for r in rows);
 
+    cursor.execute("""
+        SELECT last_claim
+        FROM daily_claims
+        WHERE user_id = ?
+    """, (user_id,));
+
+    daily = cursor.fetchone();
+
     print(f"\n=== PROFILE ===");
     print(f"Name: {name or 'Unknown'}");
     print(f"User ID: {user_id}");
     print(f"Total Wins: {total}");
-    print("Games:");
 
+    if daily:
+        import time
+        last = daily[0];
+        next_claim = last + 86400;
+        now = int(time.time());
+
+        if now >= next_claim:
+            print("Daily: READY");
+        else:
+            print(f"Daily: cooldown (<t:{next_claim}:R>)");
+    else:
+        print("Daily: never claimed");
+
+    print("\nGames:");
     for game, pts in rows:
         print(f"  {game}: {pts}");
 
@@ -162,9 +196,13 @@ def export_db(cursor):
     cursor.execute("SELECT user_id, name FROM users");
     users = cursor.fetchall();
 
+    cursor.execute("SELECT user_id, last_claim FROM daily_claims");
+    dailies = cursor.fetchall();
+
     data = {
         "users": {},
-        "scores": defaultdict(dict)
+        "scores": defaultdict(dict),
+        "daily_claims": {}
     };
 
     for user_id, name in users:
@@ -172,6 +210,9 @@ def export_db(cursor):
 
     for user_id, game, points in scores:
         data["scores"][user_id][game] = points;
+
+    for user_id, last_claim in dailies:
+        data["daily_claims"][user_id] = last_claim;
 
     with open("export.json", "w") as f:
         json.dump(data, f, indent=4);
