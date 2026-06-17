@@ -1,0 +1,9 @@
+[project]
+name = "dionysus-fluxer-bot"
+version = "0.1.0"
+description = "A fluxer bot with a bunch of simple games to pass the time."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fluxer-py>=0.4.2",
+]
