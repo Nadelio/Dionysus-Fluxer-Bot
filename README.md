@@ -27,3 +27,7 @@ Games:
 - Coin Flip (`coin_flip`), flip a coin and bet on the face-up side, if you win, get double your bet
 - Word Scramble (`scramble`), guess the 5-letter word from its scrambled up form
 - Guess The Number (`guess`), guess the secret number from 1 to 100
+
+#
+
+I host the bot on my own machine, so if you want to just invite it to your server, use this link: [Invite Me!](https://web.fluxer.app/oauth2/authorize?client_id=1516808237679120384&scope=bot&permissions=101440)
