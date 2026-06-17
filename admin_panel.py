@@ -1,0 +1,222 @@
+import sqlite3
+import json
+from collections import defaultdict
+
+DB_NAME = "user_data.db";
+
+def connect():
+    return sqlite3.connect(DB_NAME);
+
+def list_users(cursor):
+    cursor.execute("SELECT DISTINCT user_id FROM scores");
+    users = [r[0] for r in cursor.fetchall()];
+    print("\nUsers:");
+    print(users);
+
+def list_games(cursor):
+    cursor.execute("SELECT DISTINCT game FROM scores");
+    games = [r[0] for r in cursor.fetchall()];
+    print("\nGames:");
+    print(games);
+
+def inspect(cursor):
+    cursor.execute("SELECT * FROM scores");
+    rows = cursor.fetchall();
+
+    print("\nRaw table:");
+    for row in rows:
+        print(row);
+
+def leaderboard(cursor, game):
+    cursor.execute("""
+        SELECT user_id, points
+        FROM scores
+        WHERE game = ?
+        ORDER BY points DESC
+    """, (game,));
+
+    rows = cursor.fetchall();
+
+    print(f"\nLeaderboard: {game}");
+    for i, (user, pts) in enumerate(rows, 1):
+        print(f"{i}. {user} - {pts}");
+
+
+def total_leaderboard(cursor):
+    cursor.execute("""
+        SELECT user_id, SUM(points)
+        FROM scores
+        GROUP BY user_id
+        ORDER BY SUM(points) DESC
+    """);
+
+    rows = cursor.fetchall();
+
+    print("\nTotal Leaderboard:");
+    for i, (user, pts) in enumerate(rows, 1):
+        print(f"{i}. {user} - {pts}");
+
+def find_user(cursor, user_id):
+    cursor.execute("""
+        SELECT game, points
+        FROM scores
+        WHERE user_id = ?
+    """, (user_id,));
+
+    rows = cursor.fetchall();
+
+    if not rows:
+        print(f"No data for user {user_id}");
+        return;
+
+    print(f"\nUser {user_id}:");
+    for game, pts in rows:
+        print(f"- {game}: {pts}");
+
+def profile(cursor, user_id):
+    cursor.execute("""
+        SELECT game, points
+        FROM scores
+        WHERE user_id = ?
+    """, (user_id,));
+
+    rows = cursor.fetchall();
+
+    if not rows:
+        print(f"No profile found for {user_id}");
+        return;
+
+    total = sum(r[1] for r in rows);
+
+    print(f"\n=== PROFILE: {user_id} ===");
+    print(f"Total Points: {total}");
+    print("Games:");
+
+    for game, pts in rows:
+        print(f"  {game}: {pts}");
+
+def modify_points(cursor, user_id, game, amount):
+    cursor.execute("""
+        INSERT OR IGNORE INTO scores (user_id, game, points)
+        VALUES (?, ?, 0)
+    """, (user_id, game));
+
+    cursor.execute("""
+        UPDATE scores
+        SET points = points + ?
+        WHERE user_id = ? AND game = ?
+    """, (amount, user_id, game));
+
+    print(f"Updated {user_id} | {game} by {amount}");
+
+def reset_user(cursor, user_id):
+    cursor.execute("DELETE FROM scores WHERE user_id = ?", (user_id,));
+    print(f"Deleted all data for user {user_id}");
+
+def reset_game(cursor, game):
+    cursor.execute("DELETE FROM scores WHERE game = ?", (game,));
+    print(f"Deleted all data for game {game}");
+
+def export_db(cursor):
+    cursor.execute("SELECT user_id, game, points FROM scores");
+    rows = cursor.fetchall();
+
+    data = defaultdict(dict);
+
+    for user_id, game, points in rows:
+        data[user_id][game] = points;
+
+    with open("export.json", "w") as f:
+        json.dump(data, f, indent=4);
+
+    print("Exported to export.json");
+
+def add(cursor, parts):
+    if len(parts) != 4:
+        print("Usage: add <user> <game> <amount>");
+        return;
+
+    user_id = parts[1];
+    game = parts[2];
+    amount = int(parts[3]);
+    modify_points(cursor, user_id, game, amount);
+
+def start_cli():
+    conn = connect();
+    cursor = conn.cursor();
+
+    print("Admin Panel Ready (type 'help')");
+
+    while True:
+        command = input("> ").strip();
+
+        if command.lower() in ["exit", "quit", "q"]:
+            break;
+
+        parts = command.split();
+
+        match parts:
+
+            case ["help"]:
+                print("""
+Commands:
+  users
+  games
+  leaderboard <game>
+  total
+  inspect
+
+  find <user>
+  profile <user>
+
+  add <user> <game> <amount>
+
+  reset user <user>
+  reset game <game>
+
+  export
+  exit
+                """);
+
+            case ["users"]:
+                list_users(cursor);
+
+            case ["games"]:
+                list_games(cursor);
+
+            case ["inspect"]:
+                inspect(cursor);
+
+            case ["total"]:
+                total_leaderboard(cursor);
+
+            case ["find", user_id]:
+                find_user(cursor, user_id);
+
+            case ["profile", user_id]:
+                profile(cursor, user_id);
+
+            case ["reset", "user", user_id]:
+                reset_user(cursor, user_id);
+
+            case ["reset", "game", game]:
+                reset_game(cursor, game);
+
+            case ["export"]:
+                export_db(cursor);
+
+            case ["leaderboard", game]:
+                leaderboard(cursor, game);
+
+            case _ if parts[0] == "add":
+                add(cursor, parts);
+
+            case _:
+                print("Unknown command. Type 'help'.");
+
+        conn.commit();
+
+    conn.close();
+
+if __name__ == "__main__":
+    start_cli();
