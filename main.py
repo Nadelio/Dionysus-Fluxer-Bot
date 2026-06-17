@@ -362,10 +362,10 @@ async def daily(ctx):
         VALUES (?, ?)
         """, (user_id, now));
 
+        add_points(user_id, 10, "balance");
         conn.commit();
         conn.close();
 
-        add_points(user_id, 10, "balance");
         daily_cache[str(user_id)] = now
         await ctx.reply("You received $10!");
     else:
@@ -379,10 +379,10 @@ async def daily(ctx):
             WHERE user_id = ?
             """, (now, user_id));
 
+            add_points(user_id, 10, "balance");
             conn.commit();
             conn.close();
 
-            add_points(user_id, 10, "balance");
             daily_cache[str(user_id)] = now
             await ctx.reply("You received $10!");
 
@@ -390,9 +390,6 @@ async def daily(ctx):
             await ctx.reply(
                 f"You can claim your next daily <t:{next_claim}:R>."
             );
-
-    conn.commit();
-    conn.close();
 
 @bot.command()
 async def day(ctx):
