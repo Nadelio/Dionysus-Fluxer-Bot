@@ -111,12 +111,24 @@ async def balance(ctx):
     await ctx.reply(f"You have a balance of ${bal}");
 
 @bot.command()
+async def b(ctx):
+    await balance(ctx);
+
+@bot.command()
+async def bal(ctx):
+    await balance(ctx);
+
+@bot.command()
 async def games(ctx):
     await ctx.reply(f"Current games:\n- Ping Pong (`ping`),\n- Guess A Number (`guess`),\n- Coin Flip (`coin_flip`),\n- Craps/Dice (`dice`),\n- Rock-Paper-Scissors (`rps`),\n- Word Scramble (`scramble`)\n");
 
 @bot.command()
 async def help(ctx):
     await ctx.reply("Commands:\n- `help`, see a list of current commands\n- `games`, see a list of the current games\n- `wins`, see wins for a specific game\n- `balance`, see your current balance\n- `daily`, collect your daily reward");
+
+@bot.command()
+async def h(ctx):
+    await help(ctx);
 
 #--- PING PONG ---
 @bot.command()
@@ -174,6 +186,18 @@ async def coin_flip(ctx, side: str, bet: int = 0):
     else:
         await ctx.reply(f"{side} is not a valid coin side.");
         return;
+
+@bot.command()
+async def flip(ctx, side: str, bet: int = 0):
+    await coin_flip(ctx, side, bet);
+
+@bot.command()
+async def coin(ctx, side: str, bet: int = 0):
+    await coin_flip(ctx, side, bet);
+
+@bot.command()
+async def c(ctx, side: str, bet: int = 0):
+    await coin_flip(ctx, side, bet);
 #--- COIN FLIP ---
 
 #--- CRAPS/DICE ---
@@ -196,6 +220,14 @@ async def dice(ctx, bet: int = 0):
         await ctx.reply("You lose!");
     else:
         await ctx.reply("No dice! Better luck next time!");
+
+@bot.command()
+async def r(ctx, bet: int = 0):
+    await dice(ctx, bet);
+
+@bot.command()
+async def roll(ctx, bet: int = 0):
+    await dice(ctx, bet);
 #--- CRAPS/DICE ---
 
 #--- RPS ---
@@ -265,6 +297,14 @@ async def scramble(ctx, guess: str):
         current_word = get_random_word();
     else:
         await ctx.reply("Not quite!");
+
+@bot.command()
+async def word(ctx, guess: str):
+    await scramble(ctx, guess);
+
+@bot.command()
+async def w(ctx, guess: str):
+    await scramble(ctx, guess);
 #--- WORD SCRAMBLE ---
 
 #--- DAILY ---
@@ -322,6 +362,14 @@ async def daily(ctx):
 
     conn.commit();
     conn.close();
+
+@bot.command()
+async def day(ctx):
+    await daily(ctx);
+
+@bot.command()
+async def d(ctx):
+    await daily(ctx);
 #--- DAILY ---
 
 if __name__ == "__main__":
