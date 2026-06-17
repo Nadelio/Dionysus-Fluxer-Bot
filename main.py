@@ -27,8 +27,36 @@ CREATE TABLE IF NOT EXISTS daily_claims (
 )
 """);
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    user_id TEXT PRIMARY KEY,
+    name TEXT,
+    last_seen INTEGER
+)
+""");
+
 conn.commit();
 conn.close();
+
+def upsert_user(user):
+    conn = sqlite3.connect(DB_NAME);
+    cursor = conn.cursor();
+
+    now = int(time.time());
+
+    cursor.execute("""
+    INSERT OR IGNORE INTO users (user_id, name, last_seen)
+    VALUES (?, ?, ?)
+    """, (user.id, user.username, now));
+
+    cursor.execute("""
+    UPDATE users
+    SET name = ?, last_seen = ?
+    WHERE user_id = ?
+    """, (user.username, now, user.id));
+
+    conn.commit();
+    conn.close();
 
 @bot.event
 async def on_ready():
@@ -99,6 +127,7 @@ def query_points(user_id: int, game: str) -> int:
 
 @bot.command()
 async def wins(ctx, game: str):
+    upsert_user(ctx.author)
     pts = query_points(ctx.author.id, game);
     if pts == 1:
         await ctx.reply(f"You have {pts} win in {game}.");
@@ -120,10 +149,12 @@ async def bal(ctx):
 
 @bot.command()
 async def games(ctx):
+    upsert_user(ctx.author)
     await ctx.reply(f"Current games:\n- Ping Pong (`ping`),\n- Guess A Number (`guess`),\n- Coin Flip (`coin_flip`),\n- Craps/Dice (`dice`),\n- Rock-Paper-Scissors (`rps`),\n- Word Scramble (`scramble`)\n");
 
 @bot.command()
 async def help(ctx):
+    upsert_user(ctx.author)
     await ctx.reply("Commands:\n- `help`, see a list of current commands\n- `games`, see a list of the current games\n- `wins`, see wins for a specific game\n- `balance`, see your current balance\n- `daily`, collect your daily reward");
 
 @bot.command()
@@ -133,6 +164,7 @@ async def h(ctx):
 #--- PING PONG ---
 @bot.command()
 async def ping(ctx):
+    upsert_user(ctx.author)
     add_points(ctx.author.id, 1, "ping");
     await ctx.reply("Pong!");
 #--- PING PONG ---
@@ -144,6 +176,7 @@ secret_number: int = rand.randint(1, 100);
 async def guess(ctx, number: int):
     global secret_number
 
+    upsert_user(ctx.author)
     if number < secret_number:
         await ctx.reply("Too low!");
     elif number > secret_number:
@@ -158,6 +191,7 @@ async def guess(ctx, number: int):
 #--- COIN FLIP ---
 @bot.command()
 async def coin_flip(ctx, side: str, bet: int = 0):
+    upsert_user(ctx.author)
     user_balance: int = query_points(ctx.author.id, "balance");
     if user_balance < bet:
         await ctx.reply("You don't have enough money! Use `!daily` to get more!");
@@ -203,6 +237,7 @@ async def c(ctx, side: str, bet: int = 0):
 #--- CRAPS/DICE ---
 @bot.command()
 async def dice(ctx, bet: int = 0):
+    upsert_user(ctx.author)
     user_balance: int = query_points(ctx.author.id, "balance");
     if user_balance < bet:
         await ctx.reply("You don't have enough money! Use `!daily` to get more!");
@@ -233,6 +268,7 @@ async def roll(ctx, bet: int = 0):
 #--- RPS ---
 @bot.command()
 async def rps(ctx, choice: str, bet: int = 0):
+    upsert_user(ctx.author)
     user_balance: int = query_points(ctx.author.id, "balance");
     if user_balance < bet:
         await ctx.reply("You don't have enough money! Use `!daily` to get more!");
@@ -289,6 +325,8 @@ rand.shuffle(scrambled);
 @bot.command()
 async def scramble(ctx, guess: str):
     global current_word
+
+    upsert_user(ctx.author)
     await ctx.reply(f"Current word: {scrambled}");
     if guess == current_word:
         add_points(ctx.author.id, 1, "scramble");
@@ -312,6 +350,7 @@ DAILY_COOLDOWN = 86400
 
 @bot.command()
 async def daily(ctx):
+    upsert_user(ctx.author)
     user_id = ctx.author.id;
     now = int(time.time());
 
