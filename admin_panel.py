@@ -90,13 +90,30 @@ def total_leaderboard(cursor):
     cursor.execute("""
         SELECT user_id, SUM(points)
         FROM scores
+        WHERE game <> 'balance'
         GROUP BY user_id
         ORDER BY SUM(points) DESC
     """);
 
     rows = cursor.fetchall();
 
-    print("\nTotal Leaderboard:");
+    print("\nTotal Wins Leaderboard:");
+    for i, (user_id, pts) in enumerate(rows, 1):
+        name = get_user_name(cursor, user_id) or "Unknown";
+        print(f"{i}. {name} ({user_id}) - {pts}");
+
+def balance_leaderboard(cursor):
+    cursor.execute("""
+        SELECT user_id, SUM(points)
+        FROM scores
+        WHERE game = 'balance'
+        GROUP BY user_id
+        ORDER BY SUM(points) DESC
+    """);
+
+    rows = cursor.fetchall();
+
+    print("\nBalance Leaderboard:");
     for i, (user_id, pts) in enumerate(rows, 1):
         name = get_user_name(cursor, user_id) or "Unknown";
         print(f"{i}. {name} ({user_id}) - {pts}");
@@ -124,13 +141,22 @@ def profile(cursor, user_id):
     cursor.execute("""
         SELECT game, points
         FROM scores
-        WHERE user_id = ?
+        WHERE user_id = ? and game <> 'balance'
     """, (user_id,));
 
     rows = cursor.fetchall();
 
-    name = get_user_name(cursor, user_id);
+    cursor.execute("""
+        SELECT points
+        FROM scores
+        WHERE user_id = ? AND game = 'balance'
+    """, (user_id,));
 
+    result = cursor.fetchone();
+    user_balance = result[0] if result else 0;
+
+    name = get_user_name(cursor, user_id);
+    
     if not rows:
         print(f"No profile found for {user_id}");
         return;
@@ -149,6 +175,7 @@ def profile(cursor, user_id):
     print(f"Name: {name or 'Unknown'}");
     print(f"User ID: {user_id}");
     print(f"Total Wins: {total}");
+    print(f"Balance: {user_balance}");
 
     if daily:
         import time
@@ -157,11 +184,11 @@ def profile(cursor, user_id):
         now = int(time.time());
 
         if now >= next_claim:
-            print("Daily: READY");
+            print("Daily: Ready");
         else:
-            print(f"Daily: cooldown (<t:{next_claim}:R>)");
+            print(f"Daily: On Cooldown (<t:{next_claim}:R>)");
     else:
-        print("Daily: never claimed");
+        print("Daily: Never Claimed");
 
     print("\nGames:");
     for game, pts in rows:
@@ -179,7 +206,7 @@ def modify_wins(cursor, user_id, game, amount):
         WHERE user_id = ? AND game = ?
     """, (amount, user_id, game));
 
-    print(f"Updated {user_id} | {game} by {amount}");
+    print(f"Updated {user_id}'s {game} wins by {amount}");
 
 def reset_user(cursor, user_id):
     cursor.execute("DELETE FROM scores WHERE user_id = ?", (user_id,));
@@ -252,6 +279,7 @@ Commands:
   games
   leaderboard <game>
   total
+  balance
   inspect
 
   find <user>
@@ -300,6 +328,9 @@ Commands:
 
             case ["leaderboard", game]:
                 leaderboard(cursor, game);
+
+            case ["balance"]:
+                balance_leaderboard(cursor);
 
             case _ if parts[0] == "add":
                 add(cursor, parts);
