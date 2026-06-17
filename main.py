@@ -196,6 +196,7 @@ async def coin_flip(ctx, side: str, bet: int = 0):
     if user_balance < bet:
         await ctx.reply("You don't have enough money! Use `!daily` to get more!");
         return;
+    remove_points(ctx.author.id, bet, "balance");
 
     is_heads = rand.randint(0,1) == 0;
     heads: bool;
@@ -206,7 +207,6 @@ async def coin_flip(ctx, side: str, bet: int = 0):
             add_points(ctx.author.id, 1, "coin_flip");
             await ctx.reply("It is heads! You win!");
         else: # wrong guess
-            remove_points(ctx.author.id, bet, "balance");
             await ctx.reply("It is tails! You lose!");
     elif side.lower() == "tails" or side.lower() == "tail" or side.lower() == "t":
         heads = False;
@@ -215,7 +215,6 @@ async def coin_flip(ctx, side: str, bet: int = 0):
             add_points(ctx.author.id, 1, "coin_flip");
             await ctx.reply("It is tails! You win!");
         else: # wrong guess
-            remove_points(ctx.author.id, bet, "balance");
             await ctx.reply("It is heads! You lose!");
     else:
         await ctx.reply(f"{side} is not a valid coin side.");
@@ -242,7 +241,7 @@ async def dice(ctx, bet: int = 0):
     if user_balance < bet:
         await ctx.reply("You don't have enough money! Use `!daily` to get more!");
         return;
-
+    remove_points(ctx.author.id, bet, "balance");
     roll_1: int = rand.randint(1, 6);
     roll_2: int = rand.randint(1, 6);
     sum: int = roll_1 + roll_2;
@@ -251,7 +250,6 @@ async def dice(ctx, bet: int = 0):
         add_points(ctx.author.id, bet * 2, "balance");
         await ctx.reply("You win!");
     elif sum in [2, 3, 12]:
-        remove_points(ctx.author.id, bet, "balance");
         await ctx.reply("You lose!");
     else:
         await ctx.reply("No dice! Better luck next time!");
@@ -273,7 +271,7 @@ async def rps(ctx, choice: str, bet: int = 0):
     if user_balance < bet:
         await ctx.reply("You don't have enough money! Use `!daily` to get more!");
         return;
-
+    remove_points(ctx.author.id, bet, "balance");
     choices = ["r", "p", "s"];
     idx = rand.randint(0, 2);
     bot_choice = choices[idx];
@@ -285,15 +283,15 @@ async def rps(ctx, choice: str, bet: int = 0):
             await ctx.reply("Tie!");
         elif choice == "r" and bot_choice == "s":
             add_points(ctx.author.id, 1, "rps");
-            add_points(ctx.author.id, 5, "balanace");
+            add_points(ctx.author.id, bet * 2, "balance");
             await ctx.reply("You Win!");
         elif choice == "p" and bot_choice == "r":
             add_points(ctx.author.id, 1, "rps");
-            add_points(ctx.author.id, 5, "balanace");
+            add_points(ctx.author.id, bet * 2, "balance");
             await ctx.reply("You Win!");
         elif choice == "s" and bot_choice == "p":
             add_points(ctx.author.id, 1, "rps");
-            add_points(ctx.author.id, 5, "balanace");
+            add_points(ctx.author.id, bet * 2, "balance");
             await ctx.reply("You Win!");
         else:
             await ctx.reply("You Lose!");
