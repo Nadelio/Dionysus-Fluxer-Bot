@@ -9,8 +9,8 @@ So I made named a minigame bot after him.\
 It's a pretty simple bot, just a few games rn, will probably add more later.\
 Making it open-source in case you want to self-host it for your own server. Yk following the good ol' FOSS standard that Fluxer itself follows :3
 
-Anyways, please enjoy! Here is some information about the bot interface:
-
+Anyways, please enjoy!
+# 
 Command prefix: `!`
 
 Commands:
