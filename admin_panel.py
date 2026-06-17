@@ -127,13 +127,13 @@ def profile(cursor, user_id):
     print(f"\n=== PROFILE ===");
     print(f"Name: {name or 'Unknown'}");
     print(f"User ID: {user_id}");
-    print(f"Total Points: {total}");
+    print(f"Total Wins: {total}");
     print("Games:");
 
     for game, pts in rows:
         print(f"  {game}: {pts}");
 
-def modify_points(cursor, user_id, game, amount):
+def modify_wins(cursor, user_id, game, amount):
     cursor.execute("""
         INSERT OR IGNORE INTO scores (user_id, game, points)
         VALUES (?, ?, 0)
@@ -187,7 +187,7 @@ def add(cursor, parts):
     game = parts[2];
     amount = int(parts[3]);
 
-    modify_points(cursor, user_id, game, amount);
+    modify_wins(cursor, user_id, game, amount);
 
 def start_cli():
     conn = connect();
