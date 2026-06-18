@@ -410,7 +410,7 @@ async def scramble(ctx, guess: str):
     global current_word
 
     upsert_user(ctx.author)
-    await ctx.reply(f"Current word: {scrambled}");
+    await ctx.reply(f"Current word: {"".join(scrambled)}");
     if guess == current_word:
         add_points(ctx.author.id, 1, "scramble");
         add_points(ctx.author.id, 5, "balance");
