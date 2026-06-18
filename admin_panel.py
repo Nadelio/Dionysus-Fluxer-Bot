@@ -90,7 +90,7 @@ def total_leaderboard(cursor):
     cursor.execute("""
         SELECT user_id, SUM(points)
         FROM scores
-        WHERE game <> 'balance'
+        WHERE game <> 'balance' AND game <> 'ping'
         GROUP BY user_id
         ORDER BY SUM(points) DESC
     """);

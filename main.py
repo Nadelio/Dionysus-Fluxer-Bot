@@ -125,9 +125,13 @@ def remove_points(user_id, points_to_add: int, game: str):
 def query_points(user_id: int, game: str) -> int:
     return score_cache.get(str(user_id), {}).get(game, 0)
 
+def get_user_name(user_id: int):
+    return user_cache.get(str(user_id));
+
+#--- INFO COMMANDS ---
 @bot.command()
 async def wins(ctx, game: str):
-    upsert_user(ctx.author)
+    upsert_user(ctx.author);
     pts = query_points(ctx.author.id, game);
     if pts == 1:
         await ctx.reply(f"You have {pts} win in {game}.");
@@ -148,18 +152,69 @@ async def bal(ctx):
     await balance(ctx);
 
 @bot.command()
-async def games(ctx):
+async def leaderboard(ctx, sort: str):
     upsert_user(ctx.author)
+
+    reply_str = ""
+
+    if sort.lower().startswith("w"):
+        leaderboard_data = [];
+
+        for user_id, games in score_cache.items():
+            total_wins = sum(
+                points
+                for game, points in games.items()
+                if game not in ("balance", "ping")
+            );
+
+            leaderboard_data.append((user_id, total_wins));
+
+        leaderboard_data.sort(key=lambda x: x[1], reverse=True);
+
+        reply_str += "Total Wins Leaderboard\n";
+
+        for i, (user_id, wins) in enumerate(leaderboard_data[:10], 1):
+            name = user_cache.get(str(user_id), "Unknown");
+            reply_str += f" {i}. {name} - {wins}\n";
+
+        await ctx.reply(reply_str);
+    elif sort.lower().startswith("b"):
+        leaderboard_data = [];
+
+        for user_id, games in score_cache.items():
+            balance = games.get("balance", 0);
+            leaderboard_data.append((user_id, balance));
+
+        leaderboard_data.sort(key=lambda x: x[1], reverse=True);
+
+        reply_str += "Balance Leaderboard\n";
+
+        for i, (user_id, balance) in enumerate(leaderboard_data[:10], 1):
+            name = user_cache.get(str(user_id), "Unknown");
+            reply_str += f" {i}. {name} - ${balance}\n";
+
+        await ctx.reply(reply_str);
+    else:
+        await ctx.reply(f"Unknown leaderboard '{sort}', known leaderboards: `wins`, `balance`");
+
+@bot.command()
+async def lb(ctx, sort: str):
+    await leaderboard(ctx, sort);
+
+@bot.command()
+async def games(ctx):
+    upsert_user(ctx.author);
     await ctx.reply(f"Current games:\n- Ping Pong (`ping`),\n- Guess A Number (`guess`),\n- Coin Flip (`coin_flip`),\n- Craps/Dice (`dice`),\n- Rock-Paper-Scissors (`rps`),\n- Word Scramble (`scramble`)\n");
 
 @bot.command()
 async def help(ctx):
-    upsert_user(ctx.author)
-    await ctx.reply("Commands:\n- `help`, see a list of current commands\n- `games`, see a list of the current games\n- `wins`, see wins for a specific game\n- `balance`, see your current balance\n- `daily`, collect your daily reward");
+    upsert_user(ctx.author);
+    await ctx.reply("Commands:\n- `help`, see a list of current commands\n- `games`, see a list of the current games\n- `wins`, see wins for a specific game\n- `balance`, see your current balance\n- `daily`, collect your daily reward\n- `leaderboard`, see the leaderboards for wins or balance");
 
 @bot.command()
 async def h(ctx):
     await help(ctx);
+#--- INFO COMMANDS ---
 
 #--- PING PONG ---
 @bot.command()
