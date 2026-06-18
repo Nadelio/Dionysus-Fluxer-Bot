@@ -166,7 +166,9 @@ async def leaderboard(ctx, category: str = "wins"):
         "coin_flip",
         "cf",
         "dice",
-        "ping"
+        "ping",
+        "pp",
+        "ping_pong"
     };
 
     leaderboard_data = [];
@@ -187,13 +189,12 @@ async def leaderboard(ctx, category: str = "wins"):
                 for game, points in games.items()
                 if game not in ("balance", "ping")
             );
-
         elif category == "balance" or category == "b":
             score = games.get("balance", 0);
-
         elif category == "cf":
             score = games.get("coin_flip", 0);
-
+        elif category == "pp" or category == "ping_pong":
+            score = games.get("ping", 0);
         else:
             score = games.get(category, 0);
 
@@ -209,7 +210,7 @@ async def leaderboard(ctx, category: str = "wins"):
         title = "RPS Leaderboard";
     elif category == "coin_flip" or category == "cf":
         title = "Coin Flip Leaderboard";
-    elif category == "ping":
+    elif category == "ping" or category == "pp":
         title = "Ping Pong Leaderboard";
     else:
         title = f"{category.title()} Leaderboard";
