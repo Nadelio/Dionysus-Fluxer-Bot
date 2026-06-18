@@ -152,50 +152,79 @@ async def bal(ctx):
     await balance(ctx);
 
 @bot.command()
-async def leaderboard(ctx, sort: str):
-    upsert_user(ctx.author)
+async def leaderboard(ctx, category: str = "wins"):
+    upsert_user(ctx.author);
 
-    reply_str = ""
+    VALID_LEADERBOARDS = {
+        "wins",
+        "w",
+        "balance",
+        "b",
+        "guess",
+        "rps",
+        "scramble",
+        "coin_flip",
+        "cf",
+        "dice",
+        "ping"
+    };
 
-    if sort.lower().startswith("w"):
-        leaderboard_data = [];
+    leaderboard_data = [];
 
-        for user_id, games in score_cache.items():
-            total_wins = sum(
+    category = category.lower();
+
+    if category not in VALID_LEADERBOARDS:
+        await ctx.reply(
+            "Valid leaderboards: wins, balance, guess, rps, scramble, coin_flip, dice, ping"
+        );
+        return;
+
+    for user_id, games in score_cache.items():
+
+        if category == "wins" or category == "w":
+            score = sum(
                 points
                 for game, points in games.items()
                 if game not in ("balance", "ping")
             );
 
-            leaderboard_data.append((user_id, total_wins));
+        elif category == "balance" or category == "b":
+            score = games.get("balance", 0);
 
-        leaderboard_data.sort(key=lambda x: x[1], reverse=True);
+        elif category == "cf":
+            score = games.get("coin_flip", 0);
 
-        reply_str += "Total Wins Leaderboard\n";
+        else:
+            score = games.get(category, 0);
 
-        for i, (user_id, wins) in enumerate(leaderboard_data[:10], 1):
-            name = user_cache.get(str(user_id), "Unknown");
-            reply_str += f" {i}. {name} - {wins}\n";
+        leaderboard_data.append((user_id, score));
 
-        await ctx.reply(reply_str);
-    elif sort.lower().startswith("b"):
-        leaderboard_data = [];
+    leaderboard_data.sort(key=lambda x: x[1], reverse=True);
 
-        for user_id, games in score_cache.items():
-            balance = games.get("balance", 0);
-            leaderboard_data.append((user_id, balance));
-
-        leaderboard_data.sort(key=lambda x: x[1], reverse=True);
-
-        reply_str += "Balance Leaderboard\n";
-
-        for i, (user_id, balance) in enumerate(leaderboard_data[:10], 1):
-            name = user_cache.get(str(user_id), "Unknown");
-            reply_str += f" {i}. {name} - ${balance}\n";
-
-        await ctx.reply(reply_str);
+    if category == "wins" or category == "w":
+        title = "Total Wins Leaderboard";
+    elif category == "balance" or category == "b":
+        title = "Balance Leaderboard";
+    elif category == "rps":
+        title = "RPS Leaderboard";
+    elif category == "coin_flip" or category == "cf":
+        title = "Coin Flip Leaderboard";
+    elif category == "ping":
+        title = "Ping Pong Leaderboard";
     else:
-        await ctx.reply(f"Unknown leaderboard '{sort}', known leaderboards: `wins`, `balance`");
+        title = f"{category.title()} Leaderboard";
+
+    reply_str = title + "\n";
+
+    for i, (user_id, score) in enumerate(leaderboard_data[:10], start=1):
+        name = user_cache.get(str(user_id), "Unknown");
+
+        if category == "balance" or category == "b":
+            reply_str += f" {i}. {name} - ${score}\n";
+        else:
+            reply_str += f" {i}. {name} - {score}\n";
+
+    await ctx.reply(reply_str);
 
 @bot.command()
 async def lb(ctx, sort: str):
